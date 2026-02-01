@@ -46,7 +46,7 @@ class PortfolioStressTester:
             daily_portfolio_returns = np.dot(shocks, self.weights)
             # Cumulative growth over the n-day path
             portfolioSimulation[:, i] = startPrice*np.exp(np.cumsum(daily_portfolio_returns))
-        return portfolioSimulation
+        return portfolioSimulation, portfolioReturn, portfolioVolatility
     
     def plotResults(self, generalSimulation, extremeSimulation):
         fig, ax = plt.subplots(figsize=(12, 8))
@@ -81,9 +81,9 @@ if __name__ == "__main__":
     tester = PortfolioStressTester(tickers, weights, base)
     tester.fetchData()
     # Normal market
-    general = tester.runMonteCarloSimulation(dayHorizon=30, simulations=1500)
+    general, portfolioReturn, portfolioVolatility = tester.runMonteCarloSimulation(dayHorizon=30, simulations=1500)
     # Market crash
-    crash = tester.runMonteCarloSimulation(dayHorizon=30, simulations=1500, shockVolatility=3.0, marketGap=-0.15, meanShock=-0.05)
+    crash, portfolioReturnCrash, portfolioVolatilityCrash = tester.runMonteCarloSimulation(dayHorizon=30, simulations=1500, shockVolatility=3.0, marketGap=-0.15, meanShock=-0.05)
     # Risk analysis
     var_95 = base-np.percentile(general[-1, :], 5)
     stress_var = base-np.percentile(crash[-1, :], 5)
