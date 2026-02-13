@@ -54,8 +54,8 @@ with st.expander("Portfolio & Simulation Configuration", expanded=True):
 
 # Sidebar for stress test configuration
 with st.sidebar:
-    st.header("Stress Test Triggers")
-    st.markdown("Adjust these factors to simulate a Market Crash event")
+    st.header("Factors Configuration")
+    st.markdown("Adjust these factors to simulate a normal Market/Crash event")
     shock_vol = st.slider("Volatility Multiplier", 1.0, 4.0, 2.0, help="Simulates market panic by inflating asset variance")
     mkt_gap = st.slider("Overnight Gap Down (%)", -50.0, 0.0, -5.0, 1.0)/100
     mean_shock = st.slider("Daily Negative Drift", -0.10, 0.0, -0.05, 0.01, help="Simulates sustained downward pressure/panic selling")
@@ -106,9 +106,42 @@ if tickers:
             m_col5.metric("Stress Sharpe", f"{sharpeCrash:.2f}", delta=f"{sharpeCrash-sharpeGeneral:.2f}")
 
             # Tabs for organised results
-            tab1, tab2, tab3, tab4 = st.tabs(["📈Simulation Forecast", "𝜌 Asset Correlations", "🛡️Hedging", "📑Raw Market Data",])
+            tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊Historical Trends", "📈Simulation Forecast", "𝜌 Asset Correlations", "🛡️Hedging", "📑Raw Market Data"])
 
             with tab1:
+                st.subheader("Historical Asset Performance (Base 100)")
+                st.markdown("""
+                This chart visualises the relative growth of each asset over the selected lookback period. 
+                All prices are normalised to start at **100**.
+                """)
+                historical_prices = tester.data['Close'].dropna()
+                normalised_prices = (historical_prices/historical_prices.iloc[0])*100
+                historyFigure = go.Figure()
+                for asset in normalised_prices.columns:
+                    historyFigure.add_trace(go.Scatter(
+                        x=normalised_prices.index,
+                        y=normalised_prices[asset],
+                        name=asset,
+                        mode='lines',
+                        hovertemplate='%{y:.2f} (Index)'
+                    ))
+                historyFigure.update_layout(
+                    template='plotly',
+                    xaxis_title='Timeline',
+                    yaxis_title="Relative Growth (Base 100)",
+                    hovermode='x unified',
+                    height=600,
+                    legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1),
+                    margin=dict(l=0, r=0, t=0, b=0)
+                )
+                st.plotly_chart(historyFigure, width='stretch')
+                with st.expander("How to Read this Trend"):
+                    st.write(f"""
+                    * **Best Performer:** The asset at the top of the chart has the highest cumulative return since **{finalStart.strftime('%Y-%m-%d')}**.
+                    * **Volatility Check:** Assets with the most 'jagged' lines represent the highest historical risk in your portfolio.
+                    """)
+
+            with tab2:
                 st.subheader("Monte Carlo Simulations")
                 time_steps = np.arange(dayHorizon)
                 fig = go.Figure()
@@ -126,7 +159,7 @@ if tickers:
                 fig.update_layout(template="plotly_white", hovermode="x unified", height=600)
                 st.plotly_chart(fig, width='stretch')
 
-            with tab2:
+            with tab3:
                 col_a, col_b = st.columns([1.2, 1]) # Adjusting ratio to give the heatmap more room
     
                 with col_a:
@@ -153,13 +186,13 @@ if tickers:
                     In edge case simulation, these correlations are artificially inflated to simulate **Liquidity Contagion**, where investors sell all assets at once to raise cash.
                     """)
 
-            with tab3:
+            with tab4:
                 st.subheader("Optimal Hedge Suggestion")
                 risk_gap = stressvar95 - var95
                 hedge_req = (risk_gap / base) * 100
-                st.warning(f"To neutralise the additional risk, consider reallocating **{hedge_req:.2f}%** to defensive/non-correlated assets.")
-            
-            with tab4:
+                st.warning(f"To neutralise the unnecessary risk, consider reallocating **{hedge_req:.2f}%** to defensive/non-correlated assets.")
+
+            with tab5:
                 st.subheader("Raw Portfolio Data")
                 raw_data = tester.data['Close'].dropna()
                 st.dataframe(raw_data, width='stretch')
