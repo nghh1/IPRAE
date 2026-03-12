@@ -10,7 +10,7 @@ st.set_page_config(page_title="Risk Engine", layout="wide")
 
 # Header
 with st.container():
-    st.title("⚙️Investment Portfolio Risk Engine")
+    st.title("Investment Portfolio Risk Engine", anchor=False)
     st.info("Analyse portfolio resilience through Multivariate Monte Carlo Simulations and Systemic Stress Testing")
 
 ## Upper configuration bar
@@ -106,7 +106,7 @@ if tickers:
             m_col5.metric("Stress Sharpe", f"{sharpeCrash:.2f}", delta=f"{sharpeCrash-sharpeGeneral:.2f}")
 
             # Tabs for organised results
-            tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊Historical Trends", "📈Simulation Forecast", "𝜌 Asset Correlations", "🛡️Hedging", "📑Raw Market Data"])
+            tab1, tab2, tab3, tab4, tab5 = st.tabs(["Historical Trends", "Simulation Forecast", "Asset Correlations", "Hedging", "Raw Market Data"])
 
             with tab1:
                 st.subheader("Historical Asset Performance (Base 100)")
