@@ -137,8 +137,8 @@ if tickers:
                 st.plotly_chart(historyFigure, width='stretch')
                 with st.expander("How to Read this Trend"):
                     st.write(f"""
-                    * **Best Performer:** The asset at the top of the chart has the highest cumulative return since **{finalStart.strftime('%Y-%m-%d')}**.
-                    * **Volatility Check:** Assets with the most 'jagged' lines represent the highest historical risk in your portfolio.
+                    * Best Performer: The asset at the top of the chart has the highest cumulative return since {finalStart.strftime('%Y-%m-%d')}.
+                    * Volatility Check: Assets with the most 'jagged' lines represent the highest historical risk in your portfolio.
                     """)
 
             with tab2:
@@ -179,8 +179,8 @@ if tickers:
                     st.subheader("Risk Analysis Insights")
                     st.markdown(f"""
                     **What this tells:**
-                    * **Diversification Strength:** Low values (<0.2) indicate assets move independently, providing better protection.
-                    * **Systemic Risk:** High values (>0.7) suggest assets are likely to crash simultaneously during a Market Crash event.
+                    * Diversification Strength: Low values (<0.2) indicate assets move independently, providing better protection.
+                    * Systemic Risk: High values (>0.7) suggest assets are likely to crash simultaneously during a Market Crash event.
                     
                     **Stress Scenario Note:**
                     In edge case simulation, these correlations are artificially inflated to simulate **Liquidity Contagion**, where investors sell all assets at once to raise cash.

@@ -33,9 +33,6 @@ class PortfolioStressTester:
         # 252 market trading days in a year 
         portfolioReturn = np.sum(mean_logReturns*self.weights)*252
         portfolioVolatility = np.sqrt(np.dot(np.array(self.weights).T, np.dot(covariance_logReturns*252, self.weights)))
-        print("*** Portfolio statistics ***")
-        print(f"Expected annual return: {portfolioReturn:.2%}")
-        print(f"Annualised volatility: {portfolioVolatility:.2%}\n")
 
         startPrice = self.base*(1+marketGap)
         portfolioSimulation = np.zeros((dayHorizon, simulations))
@@ -87,10 +84,6 @@ if __name__ == "__main__":
     # Risk analysis
     var_95 = base-np.percentile(general[-1, :], 5)
     stress_var = base-np.percentile(crash[-1, :], 5)
-
-    print(f"\n***FINANCIAL RISK SUMMARY ***")
-    print(f"Normal VaR (95%): ${var_95:,.2f}")
-    print(f"Market crash VaR (95%): ${stress_var:,.2f}")
     
     #Visualise
     tester.plotResults(general, crash)
