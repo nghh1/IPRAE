@@ -19,8 +19,8 @@ This engine enables investors to move beyond static historical analysis. By simu
 `docker run -p 8501:8501 iprae`
 
 ## Tech Stack
-- Language: Python 3.11
-- Data: Pandas, NumPy, yfinance
+- Language: Python 3.12
+- Data manipulation: Pandas, NumPy, yfinance
 - Visualization: Plotly, Seaborn, Matplotlib
 - DevOps: Docker, uv
 - UI: Streamlit
