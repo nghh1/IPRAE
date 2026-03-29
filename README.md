@@ -13,10 +13,32 @@ This engine enables investors to move beyond static historical analysis. By simu
 
 ## Getting Started
 
-### Build the docker image
-`docker build -t iprae .`
-### Run the container
-`docker run -p 8501:8501 iprae`
+### Option 1: Using Docker
+
+**Build a Docker container image and run**
+```bash
+docker build -t iprae .
+docker run -p 8501:8501 iprae
+```
+
+### Option 2: Using uv
+
+```bash
+# Create a virtual environment using uv
+uv venv
+
+# Activate the virtual environment
+# On macOS/Linux:
+source .venv/bin/activate
+# On Windows:
+.venv\Scripts\activate
+
+# Automatically install all required packages from the lockfile
+uv sync
+
+# Run the Streamlit dashboard
+streamlit run dashboard.py
+```
 
 ## Tech Stack
 - Language: Python 3.12
