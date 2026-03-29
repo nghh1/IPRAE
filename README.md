@@ -1,5 +1,5 @@
 # Investment Portfolio Risk Analyser
-This is a high-performance risk analyser built to stress-test financial portfolios. This tool uses Non-Parametric Historical Bootstrapping to simulate thousands potential future paths, quantifying potential losses through risk metrics.
+This is a risk analyser built to stress-test financial portfolios. It uses non-parametric historical bootstrapping to simulate thousands potential future growth paths, quantifying potential losses through risk metrics.
 
 ## Key Features
 - Dynamic Simulation Engine:
