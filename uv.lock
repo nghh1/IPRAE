@@ -405,13 +405,13 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "matplotlib", specifier = ">=3.10.8" },
-    { name = "numpy", specifier = ">=2.4.3" },
-    { name = "pandas", specifier = ">=2.3.3" },
-    { name = "plotly", specifier = ">=6.6.0" },
-    { name = "seaborn", specifier = ">=0.13.2" },
-    { name = "streamlit", specifier = ">=1.55.0" },
-    { name = "yfinance", specifier = ">=1.2.0" },
+    { name = "matplotlib", specifier = "==3.10.8" },
+    { name = "numpy", specifier = "==2.4.3" },
+    { name = "pandas", specifier = "==2.3.3" },
+    { name = "plotly", specifier = "==6.6.0" },
+    { name = "seaborn", specifier = "==0.13.2" },
+    { name = "streamlit", specifier = "==1.55.0" },
+    { name = "yfinance", specifier = "==1.2.0" },
 ]
 
 [[package]]

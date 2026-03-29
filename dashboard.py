@@ -1,6 +1,7 @@
 import datetime
 import streamlit as st
 import numpy as np
+import pandas as pd
 import plotly.graph_objects as go
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -10,29 +11,33 @@ st.set_page_config(page_title="Risk Engine", layout="wide")
 
 # Header
 with st.container():
-    st.title("Investment Portfolio Risk Engine", anchor=False)
+    st.title("Investment Portfolio Risk Analyser", anchor=False)
     st.info("Analyse portfolio resilience through Multivariate Monte Carlo Simulations and Systemic Stress Testing")
 
 ## Upper configuration bar
 # Using columns to pull key inputs out of the sidebar for better flow
 with st.expander("Portfolio & Simulation Configuration", expanded=True):
-    col1, col2, col3 = st.columns([2, 1, 1])
+    col1, col2 = st.columns([2, 2])
     with col1:
-        tickers = st.multiselect(
+        selected_tickers = st.multiselect(
             "Select Portfolio Assets", 
-            ["GOOG", "NVDA", "AVGO", "BTC-USD", "TSLA", "SPY", "VOO"], 
+            ["GOOG", "NVDA", "AVGO", "AAPL", "MSFT", "AMZN", "TSLA", "SPY", "VOO", "BTC-USD"], 
             default=["GOOG", "NVDA", "AVGO", "BTC-USD"]
         )
     with col2:
-        base = st.number_input("Initial Capital (USD$)", value=23270)
+        custom_tickers_input = st.text_input("Add Custom Tickers (comma-separated)", value="", placeholder="e.g. AMD, TSM")
+        custom_tickers = [t.strip().upper() for t in custom_tickers_input.split(',') if t.strip()]
+        tickers = list(dict.fromkeys(selected_tickers + custom_tickers))
+    col3, col4, col5 = st.columns([1,1,1])
     with col3:
+        # Define the options
+        lookback_options = ["1M", "3M", "6M", "1Y", "3Y", "5Y"]
+        # Group of buttons where the selected one stays highlighted
+        selection = st.segmented_control("Historical Data Lookback Period", options=lookback_options, default="3Y", width='stretch')
+    with col4:
+        base = st.number_input("Initial Capital (USD$)", value=23270)
+    with col5:
         dayHorizon = st.selectbox("Forecast Horizon (Days)", [30, 60, 90, 180, 365], index=0)
-    st.write("Historical Data Lookback Period")
-    # Define the options
-    lookback_options = ["1M", "3M", "6M", "1Y", "3Y", "5Y"]
-
-    # Group of buttons where the selected one stays highlighted
-    selection = st.segmented_control("Select Period", options=lookback_options, default="3Y", label_visibility="collapsed")
 
     # Logic to map selection to actual start dates
     today = datetime.date.today()
@@ -84,8 +89,30 @@ if tickers:
             start = finalStart.strftime("%Y-%m-%d")
             end = finalEnd.strftime("%Y-%m-%d")
             tester = PortfolioStressTester(tickers, weights, base)
-            tester.fetchData(start, end)
             
+            try:
+                tester.fetchData(start, end)
+            except Exception as e:
+                # Catches KeyError (empty DataFrame) or any other yfinance fetch errors (e.g., ValueError for malformed inputs)
+                st.error(f"🚨 **Data Fetch Error:** One or more assets could not be found or are malformed. Please verify the symbols. (Error: {e})")
+                st.stop()
+
+            # Validate that all tickers returned valid data (for mixed valid/invalid inputs)
+            close_prices = tester.data.get('Close', pd.DataFrame())
+            invalid_tickers = []
+            if isinstance(close_prices, pd.Series):
+                if close_prices.dropna().empty:
+                    invalid_tickers = tickers
+            elif not close_prices.empty:
+                for t in tickers:
+                    if t not in close_prices.columns or close_prices[t].dropna().empty:
+                        invalid_tickers.append(t)
+            
+            if invalid_tickers:
+                st.error(f"🚨 **Invalid assets:** {', '.join(invalid_tickers)}. "
+                         "Please check for typos, then try again.")
+                st.stop()
+
             general, annualReturn, annualVolatility = tester.runMonteCarloSimulation(dayHorizon, simulations)
             crash, annualReturnCrash, annualVolatilityCrash = tester.runMonteCarloSimulation(dayHorizon, simulations, shock_vol, mkt_gap, mean_shock)
 
@@ -201,5 +228,4 @@ if tickers:
                 
                 
 else:
-    st.warning("Select assets in the configuration bar to begin.")
-
+    st.warning("Select appropriate assets in the configuration bar to begin.")
