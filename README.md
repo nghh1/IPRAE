@@ -1,15 +1,28 @@
 # Investment Portfolio Risk Analyser
-An quantitative risk instrument designed to calculate Value at Risk (VaR) and evaluate portfolio resilience through Multivariate Monte Carlo Simulations and systemic stress testing.
-
-## Project Overview
-This analyser enables investors to move beyond static historical analysis. By simulating thousands of correlated market paths, it identifies market crash vulnerabilities and suggests data-driven hedging strategies to protect capital during market panics.
+This is a high-performance risk analyser built to stress-test financial portfolios. This tool uses Non-Parametric Historical Bootstrapping to simulate thousands potential future paths, quantifying potential losses through risk metrics.
 
 ## Key Features
-- Multivariate Monte Carlo Method: Simulates throusands of price paths and computes logarithmic returns and covariance matrices to preserve asset relationships.
-- Systemic Stress Testing: A stress test module that applies volatility multipliers, overnight gaps, and negative drift to model liquidity contagion.
-- Institutional Analytics: Real-time calculation of 95% VaR and Sharpe Ratios (risk-adjusted returns).
-- Interactive Dashboard: A Streamlit UI interface demonstrating historical asset performance, asset correlation heatmap, and hedging strategy.
-- Automated Data Pipeline: Dynamic ingestion of global market data via the Yahoo Finance API.
+- Dynamic Simulation Engine:
+
+    - Historical Bootstrapping: Randomly samples historical log-returns to preserve the unique volatility of your assets.
+
+    - Buy & Hold vs. Rebalancing: Toggle between a passive strategy (where weights drift based on performance) and an active strategy (daily rebalancing to target weights).
+
+- Systemic Stress Testing:
+
+    - Volatility Shocks: Amplify historical swings (e.g., 2x or 3x market panic).
+
+    - Market Crash Events: Model overnight gaps (liquidity crises) and sustained negative drift (secular bear markets).
+
+- Advanced Risk Analytics:
+
+    - VaR & CVaR: Measures the minimum and average loss in the worst 5% of outcomes.
+
+    - Realised Sharpe Ratio: Calculates risk-adjusted returns based on simulated path outcomes rather than static historical averages.
+
+    - Risk Attribution: Identifies which specific asset is hogging the portfolio's risk budget.
+
+    - Diversification Ratio: A mathematical score of how well your assets offset each other's risks.
 
 ## Getting Started
 

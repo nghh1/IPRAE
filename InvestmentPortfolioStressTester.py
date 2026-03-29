@@ -1,4 +1,5 @@
 import yfinance as yf
+import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -15,35 +16,61 @@ class PortfolioStressTester:
         # Data includes open price, close price, low price, high price, and volume information
         self.data = yf.download(self.tickers, start=startDate, end=endDate)
         closePrice = self.data['Close']
+        
+        if isinstance(closePrice, pd.Series):
+            ticker_name = closePrice.name if closePrice.name and closePrice.name != 'Close' else self.tickers[0]
+            closePrice = closePrice.to_frame(name=ticker_name)
+            
+        # Force column order to match self.tickers. yfinance returns columns alphabetically, 
+        # which silently misaligns with self.weights and breaks risk math.
+        valid_tickers = [t for t in self.tickers if t in closePrice.columns]
+        closePrice = closePrice[valid_tickers]
+        self.closePrices = closePrice
         # Compute daily log returns eliminate multi-period volatility, due to their compounding and time-additive properties
         self.logReturns = np.log(closePrice/closePrice.shift(1)).dropna()
         return self.logReturns
     
-    def runMonteCarloSimulation(self, dayHorizon=30, simulations=1500, shockVolatility=1.0, marketGap=0.0, meanShock=0.0):
-        """
-        dayHorizon: days of simulation, default 30 days
-        simulations: number of simulations to run, default 1500 times
-        shockVolatility: default 1.0, edge cases >1.0 increases volatility
-        marketGap: default 0.0, negative for an immediate n% drop
-        meanShock: default 0.0, shifts the daily expected return if market crash occurs
-        """
-        # Compute mean vector and covariance matrix
-        mean_logReturns = self.logReturns.mean()+meanShock
-        covariance_logReturns = self.logReturns.cov()*(shockVolatility**2)
-        # 252 market trading days in a year 
-        portfolioReturn = np.sum(mean_logReturns*self.weights)*252
-        portfolioVolatility = np.sqrt(np.dot(np.array(self.weights).T, np.dot(covariance_logReturns*252, self.weights)))
+    def runSimulation(self, dayHorizon=30, simulations=1500, shockVolatility=1.0, marketGap=0.0, meanShock=0.0, rebalance=False):
+        returns_matrix = self.logReturns.values
+        num_days_history = len(returns_matrix)
+        daily_mean_shock = meanShock / 252 
+        
+        # Vectorized simulation mapping: bypass Python for-loop
+        random_indices = np.random.choice(num_days_history, size=(simulations, dayHorizon), replace=True)
+        sampled_returns = returns_matrix[random_indices]
+        shocks = (sampled_returns * shockVolatility) + daily_mean_shock
+        daily_multipliers = np.exp(shocks)
+        
+        if rebalance:
+            portfolio_daily_multipliers = np.dot(daily_multipliers, self.weights)
+            initial_gap = np.full((simulations, 1), 1 + marketGap)
+            full_multipliers = np.concatenate([initial_gap, portfolio_daily_multipliers], axis=1)
+            portfolioSimulation = (self.base * np.cumprod(full_multipliers, axis=1)).T
+        else:
+            initial_gap = np.ones((simulations, 1, len(self.tickers))) * (1 + marketGap)
+            path_multipliers = np.concatenate([initial_gap, daily_multipliers], axis=1)
+            asset_paths = np.cumprod(path_multipliers, axis=1)
+            initial_dollars_per_asset = self.base * self.weights
+            portfolioSimulation = np.sum(initial_dollars_per_asset * asset_paths, axis=2).T
 
-        startPrice = self.base*(1+marketGap)
-        portfolioSimulation = np.zeros((dayHorizon, simulations))
-        for i in range(simulations):
-            # Generate random daily returns using Multivariate Gaussian Distribution
-            shocks = np.random.multivariate_normal(mean_logReturns, covariance_logReturns, dayHorizon)
-            # Calculate daily portfolio growth while assuming weights unchanged
-            daily_portfolio_returns = np.dot(shocks, self.weights)
-            # Cumulative growth over the n-day path
-            portfolioSimulation[:, i] = startPrice*np.exp(np.cumsum(daily_portfolio_returns))
-        return portfolioSimulation, portfolioReturn, portfolioVolatility
+        # Stats for metrics
+        final_values = portfolioSimulation[-1, :]
+        returns = (final_values / self.base) - 1
+        realized_ann_return = np.mean(returns) * (252 / dayHorizon)
+        realized_ann_vol = np.std(returns) * np.sqrt(252 / dayHorizon)
+        return portfolioSimulation, realized_ann_return, realized_ann_vol
+
+    def calculateRiskContribution(self):
+        cov_matrix = self.logReturns.cov() * 252
+        portfolio_variance = np.dot(self.weights.T, np.dot(cov_matrix, self.weights))
+        portfolio_vol = np.sqrt(portfolio_variance)
+        marginal_contribution = np.dot(cov_matrix, self.weights) / portfolio_vol
+        component_contribution = self.weights * marginal_contribution
+        percent_contribution = component_contribution / portfolio_vol
+        individual_vols = np.sqrt(np.diag(cov_matrix))
+        weighted_vol = np.sum(individual_vols * self.weights)
+        diversification_ratio = weighted_vol / portfolio_vol
+        return pd.Series(percent_contribution, index=self.tickers), diversification_ratio
     
     def plotResults(self, generalSimulation, extremeSimulation):
         fig, ax = plt.subplots(figsize=(12, 8))
@@ -78,9 +105,9 @@ if __name__ == "__main__":
     tester = PortfolioStressTester(tickers, weights, base)
     tester.fetchData()
     # Normal market
-    general, portfolioReturn, portfolioVolatility = tester.runMonteCarloSimulation(dayHorizon=30, simulations=1500)
+    general, portfolioReturn, portfolioVolatility = tester.runSimulation(dayHorizon=30, simulations=1500, shockVolatility=1.0, marketGap=0.0, meanShock=0.0, rebalance=False)
     # Market crash
-    crash, portfolioReturnCrash, portfolioVolatilityCrash = tester.runMonteCarloSimulation(dayHorizon=30, simulations=1500, shockVolatility=3.0, marketGap=-0.15, meanShock=-0.05)
+    crash, portfolioReturnCrash, portfolioVolatilityCrash = tester.runSimulation(dayHorizon=30, simulations=1500, shockVolatility=3.0, marketGap=-0.15, meanShock=-0.05, rebalance=False)
     # Risk analysis
     var_95 = base-np.percentile(general[-1, :], 5)
     stress_var = base-np.percentile(crash[-1, :], 5)
