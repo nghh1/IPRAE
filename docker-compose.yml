@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  # Backend engine (FastAPI)
+  api:
+    build: .
+    container_name: risk_engine_api
+    # Start the FastAPI server on port 8000
+    command: uvicorn api:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount local files to /app (must match WORKDIR in Dockerfile)
+      - .:/app
+    restart: unless-stopped
+
+  # Frontend UI (Streamlit)
+  ui:
+    build: .
+    container_name: risk_engine_ui
+    # Start the Streamlit server on port 8501
+    command: streamlit run dashboard.py --server.port 8501 --server.address 0.0.0.0
+    ports:
+      - "8501:8501"
+    environment:
+      # Tell Streamlit to route API traffic to the 'api' container on port 8000
+      - API_URL=http://api:8000/api/v1/simulate
+    volumes:
+      # Mount local files to /app
+      - .:/app
+      # Mount secrets securely into the /app directory
+      - ./.streamlit:/app/.streamlit 
+    depends_on:
+      # Ensure the API starts up before the UI does
+      - api
+    restart: unless-stopped

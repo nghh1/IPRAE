@@ -2,6 +2,7 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.stats import t
 
 class PortfolioStressTester:
     def __init__(self, tickers, weights, base):
@@ -30,16 +31,37 @@ class PortfolioStressTester:
         self.logReturns = np.log(closePrice/closePrice.shift(1)).dropna()
         return self.logReturns
     
+    def loadData(self, clean_close_prices):
+        # The DataPipeline has already extracted 'Close' and validated the tickers
+        self.closePrices = clean_close_prices
+        # Compute daily log returns directly
+        self.logReturns = np.log(self.closePrices/self.closePrices.shift(1)).dropna()
+        return self.logReturns
+
     def runSimulation(self, dayHorizon=30, simulations=1500, shockVolatility=1.0, marketGap=0.0, meanShock=0.0, rebalance=False):
-        returns_matrix = self.logReturns.values
-        num_days_history = len(returns_matrix)
-        daily_mean_shock = meanShock / 252 
+        # Historical parameters
+        mu = self.logReturns.mean().values
+        cov = self.logReturns.cov().values
         
-        # Vectorized simulation mapping: bypass Python for-loop
-        random_indices = np.random.choice(num_days_history, size=(simulations, dayHorizon), replace=True)
-        sampled_returns = returns_matrix[random_indices]
-        shocks = (sampled_returns * shockVolatility) + daily_mean_shock
-        daily_multipliers = np.exp(shocks)
+        variance_expansion = np.diag(cov) * ((shockVolatility**2) - 1.0)
+        ito_correction = 0.5 * variance_expansion
+        daily_mean_shock = (meanShock / 252) - ito_correction 
+        
+        # Cholesky Decomposition & Student-t (Fat Tails)
+        # We scale the Cholesky matrix by the shockVolatility
+        L = np.linalg.cholesky(cov) * shockVolatility
+        
+        # df=3 represents the "fat tails" of market crashes
+        df_t = 3 
+        scale_factor = np.sqrt((df_t - 2) / df_t)
+        # Generate random variables shape: (simulations, dayHorizon, num_assets)
+        random_dist = t.rvs(df_t, size=(simulations, dayHorizon, len(self.tickers)))*scale_factor
+        
+        # Vectorized correlation mapping: bypass Python for-loop using einsum
+        daily_asset_returns = np.einsum('ij, sdk -> sdi', L, random_dist) + mu + daily_mean_shock
+        
+        # Convert log returns back to multipliers
+        daily_multipliers = np.exp(daily_asset_returns)
         
         if rebalance:
             portfolio_daily_multipliers = np.dot(daily_multipliers, self.weights)
@@ -53,11 +75,12 @@ class PortfolioStressTester:
             initial_dollars_per_asset = self.base * self.weights
             portfolioSimulation = np.sum(initial_dollars_per_asset * asset_paths, axis=2).T
 
-        # Stats for metrics
+        # Stats for metrics - preserved exactly so your dashboard doesn't break
         final_values = portfolioSimulation[-1, :]
         returns = (final_values / self.base) - 1
         realized_ann_return = np.mean(returns) * (252 / dayHorizon)
         realized_ann_vol = np.std(returns) * np.sqrt(252 / dayHorizon)
+        
         return portfolioSimulation, realized_ann_return, realized_ann_vol
 
     def calculateRiskContribution(self):

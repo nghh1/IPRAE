@@ -1,61 +1,107 @@
-# Investment Portfolio Risk Analyser
-This is a risk analyser built to stress-test financial portfolios. It uses non-parametric historical bootstrapping to simulate thousands potential future growth paths, quantifying potential losses through risk metrics.
+# Investment Portfolio Risk Analyser Engine (IPRAE)
+
+A production-grade, containerised quantitative risk engine that performs Monte Carlo stress testing on custom investment portfolios.
+
+Designed with a high-level mathematical backend and a decoupled microservice architecture, IPRAE accurately forecasts Tail Risk (CVaR), Value at Risk (VaR), and risk-adjusted returns (Sortino) under both normal and severe market crash conditions.
+
+---
+
+## Project Structure
+
+```Paintext
+IPRAE/
+├── .streamlit/
+│   └── secrets.toml                 # API keys (Git-ignored)
+├── api.py                           # FastAPI Backend application
+├── dashboard.py                     # Streamlit Frontend UI
+├── DataPipeline.py                  # Alpaca/YFinance data ingestion layer
+├── docker-compose.yml               # Docker cluster orchestrator
+├── Dockerfile                       # Container image builder 
+├── InvestmentPortfolioStressTester.py # Core Monte Carlo math engine
+├── pyproject.toml                   # uv project definitions
+└── uv.lock                          # Deterministic dependency tree
+```
+---
 
 ## Key Features
-- Dynamic Simulation Engine:
 
-    - Historical Bootstrapping: Randomly samples historical log-returns to preserve the unique volatility of your assets.
+### Microservice Architecture
+* **Frontend (Streamlit):** A lightweight, reactive client that caches data and handles UI rendering.
+* **Backend (FastAPI):** A heavy-duty, asynchronous calculation engine strictly dedicated to processing Monte Carlo matrix math.
+* **Resilient Data Pipeline:** Integrates with **Alpaca API** for premium institutional data, with a graceful, automatic fallback to **Yahoo Finance** if keys are missing.
 
-    - Buy & Hold vs. Rebalancing: Toggle between a passive strategy (where weights drift based on performance) and an active strategy (daily rebalancing to target weights).
+### Modern DevOps
+* **`uv` Package Manager:** Uses `uv` for dependency resolution.
+* **Dockerized Cluster:** A mono-repo Docker Compose setup with strict volume mapping and isolated virtual environments for seamless deployment.
 
-- Systemic Stress Testing:
+---
 
-    - Volatility Shocks: Amplify historical swings (e.g., 2x or 3x market panic).
+## Architecture Overview
 
-    - Market Crash Events: Model overnight gaps (liquidity crises) and sustained negative drift (secular bear markets).
+The application is split into two distinct containers communicating over an internal Docker network:
 
-- Advanced Risk Analytics:
+1. **User configures portfolio** via the `Streamlit` UI.
+2. **DataPipeline** checks for `secrets.toml`. If Alpaca keys are present, it fetches timezone-aware premium data. If not, it falls back to `yfinance`.
+3. The UI caches the clean dataset and sends it along with the user's stress parameters as a JSON payload to the `FastAPI` backend.
+4. The **Backend** processes the Monte Carlo simulations (up to 3,000 paths) and returns the projected bounds, CVaR, and correlation matrices.
+5. The **Frontend** decodes the JSON and renders interactive `Plotly` and `Seaborn` charts.
 
-    - VaR & CVaR: Measures the minimum and average loss in the worst 5% of outcomes.
-
-    - Realised Sharpe Ratio: Calculates risk-adjusted returns based on simulated path outcomes rather than static historical averages.
-
-    - Risk Attribution: Identifies which specific asset is hogging the portfolio's risk budget.
-
-    - Diversification Ratio: A mathematical score of how well your assets offset each other's risks.
+---
 
 ## Getting Started
 
-### Option 1: Using Docker
+The easiest and most reliable way to run this application is via Docker.
 
-**Build a Docker container image and run**
+### 1. Prerequisites
+* [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running.
+
+### 2. Configure API Secrets
+Create a `.streamlit` folder in the project root and add a `secrets.toml` file.
+
 ```bash
-docker build -t iprae .
-docker run -p 8501:8501 iprae
+mkdir .streamlit
+touch .streamlit/secrets.toml
 ```
 
-### Option 2: Using uv
+Add your Alpaca API credentials (Paper Trading keys). Note: If you leave this file empty or skip this step, the application will fall back to Yahoo Finance API.
+
+```toml
+# .streamlit/secrets.toml
+[api_keys]
+ALPACA_API_KEY = "your_alpaca_api_key"
+ALPACA_API_SECRET = "your_alpaca_api_secret"
+```
+
+### 3. Launch the Cluster
+Start the services using Docker Compose
 
 ```bash
-# Create a virtual environment using uv
-uv venv
+docker-compose up --build
+```
 
-# Activate the virtual environment
-# On macOS/Linux:
-source .venv/bin/activate
-# On Windows:
-.venv\Scripts\activate
+* **Frontend UI:** Open your brower to `http://localhost:8501`
+* **Backend API Docs:** Open your brower to `http://localhost:8000/docs`
 
-# Automatically install all required packages from the lockfile
+---
+
+## Local Testing (Without Docker)
+
+If you wish employ locally without containers, you must use `uv` to manage the environment.
+
+### 1. Install Dependencies
+```bash
+# Install uv if you haven't already
+curl -LsSf [https://astral.sh/uv/install.sh](https://astral.sh/uv/install.sh) | sh
+# Sync the virtual environment
 uv sync
-
-# Run the Streamlit dashboard
-streamlit run dashboard.py
 ```
 
-## Tech Stack
-- Language: Python 3.12
-- Data manipulation: Pandas, NumPy, yfinance
-- Visualization: Plotly, Seaborn, Matplotlib
-- DevOps: Docker, uv
-- UI: Streamlit
+### 2. Start the Backend (Terminal 1)
+```bash
+uv run uvicorn api:app --reload
+```
+
+### 3. Start the Frontend (Terminal 2)
+```bash
+uv run streamlit run dashboard.py
+```
