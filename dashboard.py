@@ -240,9 +240,12 @@ if tickers:
             st.subheader("Risk Concentration & Diversification")
             m1, m2 = st.columns(2)
             m1.metric("Diversification Ratio", f"{div_ratio:.2f}")
-            if div_ratio < 1.1: m2.error("Low Diversification: Assets are highly correlated.")
-            elif div_ratio < 1.5: m2.warning("Moderate Diversification.")
-            else: m2.success("Strong Diversification.")
+            if div_ratio < 1.1: 
+                m2.error("Low Diversification: Assets are highly correlated.")
+            elif div_ratio < 1.5: 
+                m2.warning("Moderate Diversification.")
+            else: 
+                m2.success("Strong Diversification.")
             c1, c2 = st.columns([2, 1])
             with c1:
                 comparison_df = pd.DataFrame({"Asset Allocation (%)": [w * 100 for w in weights], "Risk Contribution (%)": [r * 100 for r in risk_contrib]}, index=tickers)

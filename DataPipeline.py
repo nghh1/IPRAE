@@ -1,9 +1,12 @@
 import pandas as pd
-import numpy as np
 import yfinance as yf
+import logging
 from alpaca.data.historical import StockHistoricalDataClient
 from alpaca.data.requests import StockBarsRequest
 from alpaca.data.timeframe import TimeFrame
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class MarketDataPipeline:
     def __init__(self, tickers, start_date, end_date, api_key=None, api_secret=None):
@@ -16,10 +19,10 @@ class MarketDataPipeline:
     def fetch_data(self):
         # Check if you have a premium API key.
         if self.api_key:
-            print("Fetching data from Alpaca API")
+            logger.info(f"Fetching data for {len(self.tickers)} assets from Alpaca API.")
             return self._fetch_premium_data()
         else:
-            print("Fetching data from yfinance API")
+            logger.warning(f"API keys missing. Falling back to Yahoo Finance API for {len(self.tickers)} assets.")
             return self._fetch_yfinance_fallback()
 
     def _fetch_yfinance_fallback(self):

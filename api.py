@@ -1,14 +1,17 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 from typing import List
 import numpy as np
 import pandas as pd
+import logging
 
 from InvestmentPortfolioStressTester import PortfolioStressTester
-from DataPipeline import MarketDataPipeline
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 app = FastAPI(title="Risk Analyser API", version="1.0.0")
-
 class SimulationRequest(BaseModel):
     tickers: List[str]
     weights: List[float]
@@ -23,27 +26,38 @@ class SimulationRequest(BaseModel):
     rebalance: bool
     market_data: dict
 
+@app.get("/health")
+def health_check():
+    # Endpoint for Docker to verify the API is running
+    return {"status": "healthy", "version": "1.0.0"}
+
 @app.post("/api/v1/simulate")
-def run_risk_simulation(req: SimulationRequest):
+async def run_risk_simulation(req: SimulationRequest):
     try:
+        logger.info(f"Received simulation request for {len(req.tickers)} assets: {req.tickers}")
         clean_data = pd.DataFrame(req.market_data)
         clean_data.index = pd.to_datetime(clean_data.index)
         valid_tickers = list(clean_data.columns)
         if len(valid_tickers) != len(req.tickers):
             missing = list(set(req.tickers) - set(valid_tickers))
+            logger.error(f"Invalid data detected for assets: {', '.join(missing)}")
             raise ValueError(f"Invalid data for assets: {', '.join(missing)}. Please check for typos or recently listed IPOs.")
         
         # Initialise the Engine
         tester = PortfolioStressTester(req.tickers, req.weights, req.base)
         tester.loadData(clean_data)
         # Run the simulations
+        logger.info("Executing normal simulation engine...")
         np.random.seed(42)
-        general, ann_ret, ann_vol = tester.runSimulation(
-            req.day_horizon, req.simulations, rebalance=req.rebalance
+        general, ann_ret, ann_vol = await run_in_threadpool(
+            tester.runSimulation, req.day_horizon, req.simulations, rebalance=req.rebalance
         )
+        logger.info("Executing stress simulation engine...")
         np.random.seed(42)
-        crash, ann_ret_crash, ann_vol_crash = tester.runSimulation(
-            req.day_horizon, req.simulations, 
+        crash, ann_ret_crash, ann_vol_crash = await run_in_threadpool(
+            tester.runSimulation,
+            req.day_horizon, 
+            req.simulations, 
             shockVolatility=req.shock_volatility, 
             marketGap=req.market_gap, 
             meanShock=req.mean_shock, 
@@ -52,7 +66,7 @@ def run_risk_simulation(req: SimulationRequest):
         # Get the Risk Contributions for the Dashboard
         risk_contrib, div_ratio = tester.calculateRiskContribution()
         # Package everything the frontend needs into JSON-friendly formats
-        # We use .fillna(0) to prevent JSON errors with missing data
+        logger.info("Simulation complete, returning result payload.")
         return {
             "status": "success",
             "normal_simulation": general.tolist(),
@@ -64,4 +78,5 @@ def run_risk_simulation(req: SimulationRequest):
         }
         
     except Exception as e:
+        logger.error(f"Simulation failed: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

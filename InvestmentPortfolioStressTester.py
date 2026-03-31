@@ -3,17 +3,23 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import t
+import logging
+from typing import List, Tuple
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class PortfolioStressTester:
-    def __init__(self, tickers, weights, base):
+    def __init__(self, tickers: List[str], weights: List[float], base: float) -> None:
         self.tickers = tickers
         self.weights = np.array(weights)
         self.base = base
-        self.data = None
-        self.logReturns = None
+        if not np.isclose(self.weights.sum(), 1.0):
+            logger.warning("Weights do not sum to 1. Now normalising...")
+            self.weights = self.weights / sum(self.weights)
 
     def fetchData(self, startDate='2022-01-01', endDate="2026-01-01"):
-        print(f"Fetching data for {self.tickers} from Yahoo Finance")
+        logger.info(f"Fetching data for {self.tickers} from Yahoo Finance")
         # Data includes open price, close price, low price, high price, and volume information
         self.data = yf.download(self.tickers, start=startDate, end=endDate)
         closePrice = self.data['Close']
@@ -31,14 +37,12 @@ class PortfolioStressTester:
         self.logReturns = np.log(closePrice/closePrice.shift(1)).dropna()
         return self.logReturns
     
-    def loadData(self, clean_close_prices):
-        # The DataPipeline has already extracted 'Close' and validated the tickers
-        self.closePrices = clean_close_prices
+    def loadData(self, clean_close_prices: pd.DataFrame) -> None:
+        self.data = clean_close_prices
         # Compute daily log returns directly
-        self.logReturns = np.log(self.closePrices/self.closePrices.shift(1)).dropna()
-        return self.logReturns
+        self.logReturns = np.log(self.data/self.data.shift(1)).dropna()
 
-    def runSimulation(self, dayHorizon=30, simulations=1500, shockVolatility=1.0, marketGap=0.0, meanShock=0.0, rebalance=False):
+    def runSimulation(self, dayHorizon: int = 30, simulations: int = 1500, shockVolatility: float = 1.0, marketGap: float = 0.0, meanShock: float = 0.0, rebalance: bool = False) -> Tuple[np.ndarray, float, float]:
         # Historical parameters
         mu = self.logReturns.mean().values
         cov = self.logReturns.cov().values
@@ -57,7 +61,7 @@ class PortfolioStressTester:
         # Generate random variables shape: (simulations, dayHorizon, num_assets)
         random_dist = t.rvs(df_t, size=(simulations, dayHorizon, len(self.tickers)))*scale_factor
         
-        # Vectorized correlation mapping: bypass Python for-loop using einsum
+        # Vectorised correlation mapping: bypass Python for-loop using einsum
         daily_asset_returns = np.einsum('ij, sdk -> sdi', L, random_dist) + mu + daily_mean_shock
         
         # Convert log returns back to multipliers
@@ -83,7 +87,7 @@ class PortfolioStressTester:
         
         return portfolioSimulation, realized_ann_return, realized_ann_vol
 
-    def calculateRiskContribution(self):
+    def calculateRiskContribution(self) -> Tuple[pd.Series, float]:
         cov_matrix = self.logReturns.cov() * 252
         portfolio_variance = np.dot(self.weights.T, np.dot(cov_matrix, self.weights))
         portfolio_vol = np.sqrt(portfolio_variance)
@@ -107,7 +111,7 @@ class PortfolioStressTester:
         extremeMedian = np.median(extremeSimulation, axis=1)
         extremeUpper = np.percentile(extremeSimulation, 95, axis=1)
         # Plotting
-        ax.fill_between(days, generalLower, generalUpper, color='blue', alpha=0.3, label=f"General 90% confidence")
+        ax.fill_between(days, generalLower, generalUpper, color='blue', alpha=0.3, label="General 90% confidence")
         ax.plot(days, generalMedian, color='blue', lw=2, label='General median')
         ax.fill_between(days, extremeLower, extremeUpper, color='red', alpha=0.3, label='Extreme case')
         ax.plot(days, extremeMedian, color='red', lw=2, linestyle='--', label='Extreme median')
