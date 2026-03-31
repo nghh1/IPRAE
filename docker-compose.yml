@@ -4,6 +4,8 @@ services:
   # Backend engine (FastAPI)
   api:
     build: .
+    env_file:
+      - .env
     container_name: risk_engine_api
     # Start the FastAPI server on port 8000
     command: uvicorn api:app --host 0.0.0.0 --port 8000

@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI, HTTPException
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
@@ -7,6 +8,7 @@ import pandas as pd
 import logging
 
 from InvestmentPortfolioStressTester import PortfolioStressTester
+from DataPipeline import MarketDataPipeline
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -24,7 +26,6 @@ class SimulationRequest(BaseModel):
     market_gap: float
     mean_shock: float
     rebalance: bool
-    market_data: dict
 
 @app.get("/health")
 def health_check():
@@ -35,8 +36,11 @@ def health_check():
 async def run_risk_simulation(req: SimulationRequest):
     try:
         logger.info(f"Received simulation request for {len(req.tickers)} assets: {req.tickers}")
-        clean_data = pd.DataFrame(req.market_data)
-        clean_data.index = pd.to_datetime(clean_data.index)
+        api_key = os.getenv("ALPACA_API_KEY")
+        api_secret = os.getenv("ALPACA_API_SECRET")
+        logger.info("Initialising data pipeline...")
+        pipeline = MarketDataPipeline(req.tickers, req.start_date, req.end_date, api_key, api_secret)
+        clean_data = await run_in_threadpool(pipeline.fetch_data)
         valid_tickers = list(clean_data.columns)
         if len(valid_tickers) != len(req.tickers):
             missing = list(set(req.tickers) - set(valid_tickers))
