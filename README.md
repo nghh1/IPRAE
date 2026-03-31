@@ -9,15 +9,15 @@ Designed with a high-level mathematical backend and a decoupled microservice arc
 ```Paintext
 IPRAE/
 ├── .streamlit/
-│   └── secrets.toml                 # API keys (Git-ignored)
-├── api.py                           # FastAPI Backend application
-├── dashboard.py                     # Streamlit Frontend UI
-├── DataPipeline.py                  # Alpaca/YFinance data ingestion layer
-├── docker-compose.yml               # Docker cluster orchestrator
-├── Dockerfile                       # Container image builder 
+│   └── secrets.toml                   # API keys (Git-ignored)
+├── api.py                             # FastAPI Backend application
+├── dashboard.py                       # Streamlit Frontend UI
+├── DataPipeline.py                    # Alpaca/YFinance data ingestion layer
+├── docker-compose.yml                 # Docker cluster orchestrator
+├── Dockerfile                         # Container image builder 
 ├── InvestmentPortfolioStressTester.py # Core Monte Carlo math engine
-├── pyproject.toml                   # uv project definitions
-└── uv.lock                          # Deterministic dependency tree
+├── pyproject.toml                     # uv project definitions
+└── uv.lock                            # Deterministic dependency tree
 ```
 
 ## Key Features
