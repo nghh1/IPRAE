@@ -1,13 +1,25 @@
 # Investment Portfolio Risk Analyser Engine (IPRAE)
 
-A production-grade, containerised quantitative risk engine that performs Monte Carlo stress testing on custom investment portfolios.
+A quantitative risk engine that performs Monte Carlo stress testing on custom investment portfolios.
 
 Designed with a high-level mathematical backend and a decoupled microservice architecture, IPRAE accurately forecasts Tail Risk (CVaR), Value at Risk (VaR), and risk-adjusted returns (Sortino) under both normal and severe market crash conditions.
 
+## Live Demo (Cloud Deploymemt)
+
+The application is currently deployed via Render's cloud platform:
+
+* **Frontend Dashboard:** [https://iprae-dashboard.onrender.com](https://iprae-dashboard.onrender.com)
+* **Backend API Docs:** [https://iprae-api.onrender.com/docs](https://iprae-api.onrender.com/docs)
+
 ## Project Structure
 
-```Paintext
+```text
 IPRAE/
+├── .github/workflows/                 
+│   └── ci.yml                         # GitHub Actions CI/CD Pipeline
+├── tests/
+│   ├── test_api.py                    # FastAPI route and validation tests
+│   └── test_engine.py                 # Math engine tests
 ├── .streamlit/
 │   └── secrets.toml                   # API keys (Git-ignored)
 ├── api.py                             # FastAPI Backend application
@@ -26,8 +38,10 @@ IPRAE/
 * **Frontend (Streamlit):** A lightweight, reactive client that caches data and handles UI rendering.
 * **Backend (FastAPI):** A heavy-duty, asynchronous calculation engine strictly dedicated to processing Monte Carlo matrix math.
 * **Resilient Data Pipeline:** Integrates with **Alpaca API** for premium institutional data, with a graceful, automatic fallback to **Yahoo Finance** if keys are missing.
+* **Structured Logging & Observability:** Includes logging and a `/health` endpoint for Docker container orchestration.
 
-### Modern DevOps
+### Modern DevOps & CI/CD
+* **Automated Testing:** Core mathematical functions and API routes are strictly unit-tested and validated.
 * **Package Manager:** Uses `uv` for dependency resolution.
 * **Dockerised Cluster:** A mono-repo Docker Compose setup with strict volume mapping and isolated virtual environments for seamless deployment.
 
@@ -41,7 +55,7 @@ The application is split into two distinct containers communicating over an inte
 4. The **Backend** processes the Monte Carlo simulations (up to 3,000 paths) and returns the projected bounds, CVaR, and correlation matrices.
 5. The **Frontend** decodes the JSON and renders interactive `Plotly` and `Seaborn` charts.
 
-## Getting Started
+## Getting Started (Local Docker Deployment)
 
 The easiest and most reliable way to run this application is via Docker.
 
@@ -75,7 +89,7 @@ docker-compose up --build
 * **Frontend UI:** Open your brower to `http://localhost:8501`
 * **Backend API Docs:** Open your brower to `http://localhost:8000/docs`
 
-## Local Testing (Without Docker)
+## Local Development and Testing (Without Docker)
 
 If you wish employ locally without containers, you must use `uv` to manage the environment.
 
@@ -87,13 +101,24 @@ curl -LsSf [https://astral.sh/uv/install.sh](https://astral.sh/uv/install.sh) | 
 uv sync
 ```
 
-### 2. Start the Backend (Terminal 1)
+### 2. Run the Test Suite
 ```bash
+uv run pytest
+```
+
+### 3. Run the Linter
+```bash
+uvx ruff check .
+```
+
+### 4. Start the Backend 
+```bash
+# Terminal 1 backend
 uv run uvicorn api:app --reload
 ```
 
-### 3. Start the Frontend (Terminal 2)
 ```bash
+# Terminal 2 frontend
 uv run streamlit run dashboard.py
 ```
 
@@ -111,7 +136,7 @@ uv run streamlit run dashboard.py
 
   - Uvicorn: The lightning-fast web server that actually hosts the FastAPI application and handles the concurrent network requests.
 
-  - Pydantic: Used inside FastAPI to enforce strict data validation.
+  - Pydantic: Used inside FastAPI to enforce strict data validation and JSON serialisation.
 
 - Quantitative Math Engine
   - NumPy: Used for complex matrix multiplication, np.einsum vectorised simulations, and calculating medians/percentiles across thousands of Monte Carlo price paths instantly.
@@ -130,8 +155,10 @@ uv run streamlit run dashboard.py
 - DevOps & Infrastructure
   - Python 3.12: Version of Python programming language used for developement.
 
-  - uv: Python package manager to resolve dependencies, lock them, and build the virtual environments.
+  - uv: Python package manager to resolve dependencies, virtual environment management, and linting.
 
-  - Docker: Used to containerise the applications so they run identically on any operating system.
+  - Pytest: Automated unit testing and API validation.
 
-  - Docker Compose: The orchestrator that spins up both the UI container and the API container simultaneously and connects them via a secure internal Docker network.
+  - Docker & Docker Compose: Containerisation for local and cloud parity.
+
+  - GitHub Actions: CI/CD pipeline for automated testing and deployment. 
