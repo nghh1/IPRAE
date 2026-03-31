@@ -1,0 +1,23 @@
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+/opt/venv
+
+# Streamlit secrets
+.streamlit/secrets.toml
+
+# Cache
+__pycache__/
+tests/__pycache__
+*.pyc
+*.pyo
+*.pyd
+*.pytest_cache
+*.ruff_cache
+
+# Mac OS
+.DS_Store
