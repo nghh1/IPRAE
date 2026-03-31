@@ -4,7 +4,6 @@ from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 from typing import List
 import numpy as np
-import pandas as pd
 import logging
 
 from InvestmentPortfolioStressTester import PortfolioStressTester
