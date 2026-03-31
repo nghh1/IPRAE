@@ -1,0 +1,43 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  test-and-build:
+    name: Lint, Test, and Build
+    runs-on: ubuntu-latest
+
+    steps:
+      # Grab the code from the repository
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Install uv (with caching enabled)
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+
+      # Install Python 3.12 using uv
+      - name: Setup Python 3.12
+        run: uv python install 3.12
+
+      # Install project dependencies
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      # Run the Linter to catch formatting/syntax errors
+      - name: Run Ruff Linter
+        run: uv run ruff check .
+
+      # Run quantitative math and API unit tests
+      - name: Run Pytest
+        run: uv run pytest
+
+      # Make sure the Dockerfile isn't broken
+      - name: Test Docker Build
+        run: docker build -t iprae-test-image .
