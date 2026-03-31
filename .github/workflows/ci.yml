@@ -32,7 +32,7 @@ jobs:
 
       # Run the Linter to catch formatting/syntax errors
       - name: Run Ruff Linter
-        run: uv run ruff check .
+        run: uvx ruff check .
 
       # Run quantitative math and API unit tests
       - name: Run Pytest
