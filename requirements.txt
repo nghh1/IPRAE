@@ -137,6 +137,8 @@ protobuf==6.33.5
     # via
     #   streamlit
     #   yfinance
+psycopg2-binary==2.9.11
+    # via iprae
 pyarrow==23.0.1
     # via streamlit
 pycparser==3.0 ; implementation_name != 'PyPy'
