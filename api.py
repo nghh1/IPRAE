@@ -1,12 +1,14 @@
 import os
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List
 import numpy as np
 import logging
-
+from sqlalchemy import create_engine, Column, Integer, String, Float, JSON
+from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.orm import Session
 from InvestmentPortfolioStressTester import PortfolioStressTester
 from DataPipeline import MarketDataPipeline
 
@@ -34,6 +36,64 @@ class SimulationRequest(BaseModel):
     market_gap: float
     mean_shock: float
     rebalance: bool
+
+SQLALCHEMY_DATABASE_URL = "sqlite:///./iprae_community.db"
+engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
+
+class DBPortfolio(Base):
+    __tablename__ = "portfolio"
+    id = Column(Integer, primary_key=True, index=True)
+    author = Column(String, index=True)
+    name = Column(String)
+    tickers = Column(JSON)
+    weights = Column(JSON)
+    normal_var = Column(Float)
+    stress_var = Column(Float)
+    sortino_ratio = Column(Float)
+Base.metadata.create_all(bind=engine)
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+class PortfolioPublish(BaseModel):
+    author: str
+    name: str
+    tickers: List[str]
+    weights: List[float]
+    normal_var: float
+    stress_var: float
+    sortino_ratio: float
+
+@app.post("/api/v1/community/publish")
+def publish_portfolio(portfolio: PortfolioPublish, db: Session = Depends(get_db)):
+    try:
+        db_portfolio = DBPortfolio(
+            author=portfolio.author,
+            name=portfolio.name,
+            tickers=portfolio.tickers,
+            weights=portfolio.weights,
+            normal_var=portfolio.normal_var,
+            stress_var=portfolio.stress_var,
+            sortino_ratio=portfolio.sortino_ratio
+        )
+        db.add(db_portfolio)
+        db.commit()
+        db.refresh(db_portfolio)
+        return {"message": "Porfolio published successfully", "status": "success", "id": db_portfolio.id}
+    except Exception as e:
+        logger.error(f"Failed to publish portfolio: {str(e)}")
+        raise HTTPException(status_code=500, detail="Database insertion failed")
+
+@app.get("/api/v1/community/top_portfolios")
+async def get_community_portfolios(db: Session = Depends(get_db)):
+    portfolios = db.query(DBPortfolio).order_by(DBPortfolio.sortino_ratio.desc()).limit(10).all()
+    return portfolios
 
 @app.get("/health")
 def health_check():
