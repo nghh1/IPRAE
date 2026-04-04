@@ -21,3 +21,7 @@ tests/__pycache__
 
 # Mac OS
 .DS_Store
+
+# DB
+*.db
+iprae_community.db
