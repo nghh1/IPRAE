@@ -24,6 +24,17 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./iprae_community.db")
+if SQLALCHEMY_DATABASE_URL.startswith("postgres://"):
+    SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgres://", "postgresql://", 1)
+if SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
+    engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+else:
+    engine = create_engine(SQLALCHEMY_DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
+
 class SimulationRequest(BaseModel):
     tickers: List[str]
     weights: List[float]
@@ -36,16 +47,6 @@ class SimulationRequest(BaseModel):
     market_gap: float
     mean_shock: float
     rebalance: bool
-
-SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./iprae_community.db")
-if SQLALCHEMY_DATABASE_URL.startswith("postgres://"):
-    SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgres://", "postgresql://", 1)
-if SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
-    engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
-else:
-    engine = create_engine(SQLALCHEMY_DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
 
 class DBPortfolio(Base):
     __tablename__ = "portfolio"
@@ -76,7 +77,7 @@ class PortfolioPublish(BaseModel):
     sortino_ratio: float
 
 @app.post("/api/v1/community/publish")
-def publish_portfolio(portfolio: PortfolioPublish, db: Session = Depends(get_db)):
+async def publish_portfolio(portfolio: PortfolioPublish, db: Session = Depends(get_db)):
     try:
         db_portfolio = DBPortfolio(
             author=portfolio.author,
