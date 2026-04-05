@@ -101,6 +101,15 @@ async def get_community_portfolios(db: Session = Depends(get_db)):
     portfolios = db.query(DBPortfolio).order_by(DBPortfolio.sortino_ratio.desc()).limit(10).all()
     return portfolios
 
+@app.delete("/api/v1/community/portfolio/{portfolio_id}")
+async def delete_portfolio(portfolio_id: int, db: Session = Depends(get_db)):
+    portfolio = db.query(DBPortfolio).filter(DBPortfolio.id == portfolio_id).first()
+    if not portfolio:
+        raise HTTPException(status_code=404, detail="Portfolio not found")
+    db.delete(portfolio)
+    db.commit()
+    return {"message": "Portfolio deleted successfully", "status": "success"}
+
 @app.get("/health")
 def health_check():
     # Endpoint for Docker to verify the API is running
