@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from typing import List
 import numpy as np
 import logging
-from sqlalchemy import create_engine, Column, Integer, String, Float, JSON
+from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, JSON
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.orm import Session
 from InvestmentPortfolioStressTester import PortfolioStressTester
@@ -49,7 +49,7 @@ class SimulationRequest(BaseModel):
     rebalance: bool
 
 class DBPortfolio(Base):
-    __tablename__ = "portfolio"
+    __tablename__ = "portfolio_updated"
     id = Column(Integer, primary_key=True, index=True)
     author = Column(String, index=True)
     name = Column(String)
@@ -58,6 +58,15 @@ class DBPortfolio(Base):
     normal_var = Column(Float)
     stress_var = Column(Float)
     sortino_ratio = Column(Float)
+    base_capital = Column(Float)
+    start_date = Column(String)
+    end_date = Column(String)
+    day_horizon = Column(Integer)
+    simulations = Column(Integer)
+    shock_volatility = Column(Float)
+    market_gap = Column(Float)
+    mean_shock = Column(Float)
+    rebalance = Column(Boolean)
 Base.metadata.create_all(bind=engine)
 
 def get_db():
@@ -75,6 +84,15 @@ class PortfolioPublish(BaseModel):
     normal_var: float
     stress_var: float
     sortino_ratio: float
+    base_capital: float
+    start_date: str
+    end_date: str
+    day_horizon: int
+    simulations: int
+    shock_volatility: float
+    market_gap: float
+    mean_shock: float
+    rebalance: bool
 
 @app.post("/api/v1/community/publish")
 async def publish_portfolio(portfolio: PortfolioPublish, db: Session = Depends(get_db)):
@@ -86,7 +104,16 @@ async def publish_portfolio(portfolio: PortfolioPublish, db: Session = Depends(g
             weights=portfolio.weights,
             normal_var=portfolio.normal_var,
             stress_var=portfolio.stress_var,
-            sortino_ratio=portfolio.sortino_ratio
+            sortino_ratio=portfolio.sortino_ratio,
+            base_capital=portfolio.base_capital,
+            start_date=portfolio.start_date,
+            end_date=portfolio.end_date,
+            day_horizon=portfolio.day_horizon,
+            simulations=portfolio.simulations,
+            shock_volatility=portfolio.shock_volatility,
+            market_gap=portfolio.market_gap,
+            mean_shock=portfolio.mean_shock,
+            rebalance=portfolio.rebalance
         )
         db.add(db_portfolio)
         db.commit()
