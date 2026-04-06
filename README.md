@@ -6,9 +6,9 @@ Designed with a high-level mathematical backend and a decoupled microservice arc
 
 ## Live Demo (Cloud Deploymemt)
 
-The IPRAE v1.0 application is currently deployed via Render's cloud platform:
+The IPRAE v1.0 application is currently deployed on cloud platforms:
 
-* **Frontend Dashboard:** [https://iprae-dashboard.onrender.com](https://iprae-dashboard.onrender.com)
+* **Frontend Dashboard:** [https://iprae-ui.vercel.app](https://iprae-ui.vercel.app/)
 * **Backend API Docs:** [https://iprae-api.onrender.com/docs](https://iprae-api.onrender.com/docs)
 
 A re-engineered frontend UI in separate repository:
